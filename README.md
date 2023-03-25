@@ -2,9 +2,11 @@ Uryi Gepetovich Telegramov, a self-hosted ChatGPT + Telegram secretary.
 
 Deploy, configure, and enjoy.
 
-Deploy:
-
-- replace `CHAT_ID` and `BOT_TOKEN` in [fly.toml](fly.toml), and you can deploy Uryi to [fly.io](https://fly.io) with a signle command: `fly deploy`
+Deploy to fly.io free tier:
+- login to [fly.io](https://fly.io)
+- create an app with `fly apps create <some-name>`
+- create secrets mentioned in [fly.toml](fly.toml) `fly secrets set TD_API_ID=... TD_API_HASH=... etc.`
+- `fly deploy`
 
 Configure:
 

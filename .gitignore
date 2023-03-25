@@ -24,6 +24,3 @@ uryi-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
-
-# TDLib
-td

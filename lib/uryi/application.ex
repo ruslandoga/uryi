@@ -4,8 +4,18 @@ defmodule Uryi.Application do
 
   @impl true
   def start(_type, _args) do
+    %{"@type" => "ok"} =
+      TD.execute(%{
+        "@type" => "setLogVerbosityLevel",
+        "@args" => %{"new_verbosity_level" => 1}
+      })
+
+    # td log file
+
     children = [
-      {Finch, name: Uryi.Finch, pools: %{default: [protocol: :http2]}}
+      {Finch, name: Uryi.finch(), pools: %{default: [protocol: :http2]}},
+      Bot,
+      {TD, handler: Uryi}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Uryi.Supervisor)
