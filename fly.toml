@@ -1,0 +1,10 @@
+app = "uryi-gpt"
+
+kill_signal = "SIGTERM"
+kill_timeout = 5
+
+[build]
+  image = "ghcr.io/ruslandoga/uryi:master"
+
+# https://fly.io/docs/reference/secrets/
+# TG_API_ID, TG_API_HASH, TG_BOT_TOKEN, OWNER_ID, ENABLED_IN
