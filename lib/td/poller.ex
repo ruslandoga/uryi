@@ -16,14 +16,14 @@ defmodule TD.Poller do
         "@extra" => "VERSION"
       })
 
-    :proc_lib.spawn_link(__MODULE__, :loop, [])
+    {:ok, :proc_lib.spawn_link(__MODULE__, :loop, [])}
   end
 
   @doc false
   def loop do
     case Nif.recv(1.0) do
       message when is_binary(message) ->
-        Uryi.PubSub.broadcast(Uryi.td_topic(), Jason.decode!(message))
+        Uryi.PubSub.broadcast(Uryi.td_topic(), {__MODULE__, Jason.decode!(message)})
         __MODULE__.loop()
 
       nil ->

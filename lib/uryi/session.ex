@@ -1,31 +1,50 @@
 defmodule Uryi.Session do
   @moduledoc false
   use GenServer
+  require Logger
+
+  @type state :: %{client_id: pos_integer(), auth: atom()}
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
 
   @impl true
-  def init(opts) do
+  def init(_opts) do
     Uryi.PubSub.subscribe(Uryi.bot_topic())
     Uryi.PubSub.subscribe(Uryi.td_topic())
-    {:ok, %{}}
+    {:ok, %{client_id: 1, auth: nil}}
   end
 
   @impl true
-  def handle_info({TD, message}, state) do
+  def handle_info({TD.Poller, message}, state) do
+    state = td_handle(message, state)
+    {:noreply, state}
   end
 
-  @impl TD
-  def td_handle(
-        %{
-          "@type" => "updateAuthorizationState",
-          "authorization_state" => %{"@type" => type},
-          "@client_id" => client_id
-        },
-        client_id
-      ) do
+  def handle_info({Bot.Poller, message}, state) do
+    owner_id = Uryi.owner_id()
+
+    case message do
+      %{"message" => %{"chat" => %{"id" => ^owner_id}, "text" => text}} ->
+        bot_handle(text, state)
+
+      _other ->
+        Logger.debug(bot: message)
+    end
+
+    {:noreply, state}
+  end
+
+  @spec td_handle(map, state) :: state
+  defp td_handle(
+         %{
+           "@type" => "updateAuthorizationState",
+           "authorization_state" => %{"@type" => type},
+           "@client_id" => client_id
+         },
+         state
+       ) do
     case type do
       "authorizationStateWaitTdlibParameters" ->
         TD.send(client_id, %{
@@ -42,38 +61,43 @@ defmodule Uryi.Session do
           "use_test_dc" => Uryi.td_use_test_dc()
         })
 
+        %{state | client_id: client_id}
+
       "authorizationStateWaitPhoneNumber" ->
-        login_phone(client_id)
+        prompt_phone()
+        %{state | auth: :phone}
 
       "authorizationStateWaitCode" ->
-        login_code(client_id)
+        prompt_phone()
+        %{state | auth: :code}
 
       "authorizationStateWaitPassword" ->
-        login_password(client_id)
+        prompt_phone()
+        %{state | auth: :password}
     end
   end
 
-  def td_handle(
-        %{"@client_id" => client_id, "@type" => "error", "@extra" => extra} = message,
-        client_id
-      ) do
-    Logger.error(tdlib: message, client_id: client_id)
+  defp td_handle(
+         %{"@client_id" => client_id, "@type" => "error", "@extra" => extra} = message,
+         state
+       ) do
+    Logger.error(tdlib: message)
 
     case extra do
-      "AUTH_PHONE" -> login_phone(client_id)
-      "AUTH_CODE" -> login_code(client_id)
-      "AUTH_PASSWORD" -> login_password(client_id)
+      "AUTH_PHONE" -> prompt_phone()
+      "AUTH_CODE" -> prompt_code()
+      "AUTH_PASSWORD" -> prompt_password()
     end
+
+    state
   end
 
-  def td_handle(%{"@type" => "error"} = message, client_id) do
-    Logger.error(tdlib: message, client_id: client_id)
+  defp td_handle(%{"@type" => "error"} = message, state) do
+    Logger.error(tdlib: message)
+    state
   end
 
-  def td_handle(
-        %{"@type" => "updateOption", "@client_id" => client_id} = message,
-        client_id
-      ) do
+  defp td_handle(%{"@type" => "updateOption"} = message, state) do
     case message do
       %{"name" => "version", "value" => %{"value" => version}} ->
         Uryi.put_env(:td_version, version)
@@ -82,52 +106,59 @@ defmodule Uryi.Session do
         Uryi.put_env(:td_commit, commit)
 
       _ ->
-        Logger.debug(skipped: true, tdlib: message, client_id: client_id)
+        Logger.debug(skipped: true, tdlib: message)
     end
+
+    state
   end
 
-  def td_handle(message, client_id) do
-    Logger.debug(skipped: true, tdlib: message, client_id: client_id)
+  defp td_handle(message, state) do
+    Logger.debug(skipped: true, tdlib: message)
+    state
   end
 
-  @spec bot_prompt(String.t()) :: map
-  def bot_prompt(prompt) do
-    {:ok, %Finch.Response{status: 200, body: body}} = Bot.send_prompt(Uryi.owner_id(), prompt)
-
-    %{"ok" => true, "result" => %{"message_id" => message_id}} =
-      Jason.decode!(body) |> IO.inspect(label: "prompt")
-
-    Bot.wait_message(Uryi.owner_id(), message_id + 1)
+  defp prompt_phone do
+    {:ok, _} = Bot.send_prompt(Uryi.owner_id(), "Please enter your phone number")
   end
 
-  def login_phone(client_id) do
-    %{"message" => %{"text" => phone}} = bot_prompt("Please enter your phone number")
+  defp prompt_code do
+    {:ok, _} =
+      Bot.send_prompt(Uryi.owner_id(), "Please enter the authentication code you received")
+  end
 
+  defp prompt_password do
+    {:ok, _} = Bot.send_prompt(Uryi.owner_id(), "Please enter your password")
+  end
+
+  def set_phone(client_id, text) do
     TD.send(client_id, %{
       "@type" => "setAuthenticationPhoneNumber",
       "@extra" => "AUTH_PHONE",
-      "phone_number" => phone
+      "phone_number" => text
     })
   end
 
-  def login_code(client_id) do
-    %{"message" => %{"text" => code}} =
-      bot_prompt("Please enter the authentication code you received")
-
+  def check_code(client_id, text) do
     TD.send(client_id, %{
       "@type" => "checkAuthenticationCode",
       "@extra" => "AUTH_CODE",
-      "code" => String.to_integer(code)
+      "code" => String.to_integer(text)
     })
   end
 
-  def login_password(client_id) do
-    %{"message" => %{"text" => password}} = bot_prompt("Please enter your password")
-
+  def check_password(client_id, text) do
     TD.send(client_id, %{
       "@type" => "checkAuthenticationPassword",
       "@extra" => "AUTH_PASSWORD",
-      "password" => password
+      "password" => text
     })
+  end
+
+  defp bot_handle(text, %{auth: auth, client_id: client_id}) when not is_nil(auth) do
+    case auth do
+      :phone -> set_phone(client_id, text)
+      :code -> check_code(client_id, text)
+      :password -> check_password(client_id, text)
+    end
   end
 end

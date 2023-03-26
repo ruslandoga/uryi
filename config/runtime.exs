@@ -45,10 +45,12 @@ enabled_in =
   end)
 
 config :uryi,
+  td_enabled: config_env() != :test,
   td_api_id: td_api_id,
   td_api_hash: td_api_hash,
   td_use_test_dc: td_use_test_dc,
   td_database_directory: td_database_directory,
+  tg_bot_enabled: config_env() != :test,
   tg_bot_token: tg_bot_token,
   tg_bot_env: tg_bot_env,
   openai_api_key: openai_api_key,

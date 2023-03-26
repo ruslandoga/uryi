@@ -8,7 +8,7 @@ defmodule Bot.Poller do
   end
 
   def start_link(_opts) do
-    :proc_lib.spawn_link(__MODULE__, :loop, [0])
+    {:ok, :proc_lib.spawn_link(__MODULE__, :loop, [0])}
   end
 
   @doc false
@@ -23,7 +23,7 @@ defmodule Bot.Poller do
 
         update_id =
           Enum.reduce(result, update_id, fn message, _update_id ->
-            Uryi.PubSub.broadcast(topic, message)
+            Uryi.PubSub.broadcast(topic, {__MODULE__, message})
             Map.fetch!(message, "update_id")
           end)
 
