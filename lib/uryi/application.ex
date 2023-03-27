@@ -13,11 +13,9 @@ defmodule Uryi.Application do
     # td log file
 
     children = [
-      {Registry, name: Uryi.registry(), keys: :duplicate},
       {Finch, name: Uryi.finch(), pools: %{default: [protocol: :http2]}},
-      Uryi.Session,
-      TD.Poller,
-      Bot.Poller
+      Bot,
+      {TD, handler: Uryi}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Uryi.Supervisor)

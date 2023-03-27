@@ -1,81 +1,107 @@
 defmodule GPT do
   @moduledoc "OpenAI API client to generate Uryi responses"
 
-  def build(path, api_key) do
+  def build(path) do
     url = Path.join("https://api.openai.com", path)
 
     headers = [
       {"content-type", "application/json"},
-      {"authorization", "Bearer #{api_key}"}
+      {"authorization", "Bearer #{Uryi.openai_api_key()}"}
     ]
 
     Finch.build("GET", url, headers)
   end
 
-  def build(path, api_key, params) when is_map(params) do
+  def build(path, params) when is_map(params) do
     url = Path.join("https://api.openai.com", path)
 
     headers = [
       {"content-type", "application/json"},
-      {"authorization", "Bearer #{api_key}"}
+      {"authorization", "Bearer #{Uryi.openai_api_key()}"}
     ]
 
     body = Jason.encode_to_iodata!(params)
     Finch.build("POST", url, headers, body)
   end
 
-  def build_chat_completion(text, opts \\ []) do
-    api_key = Keyword.fetch!(opts, :api_key)
-    model = Keyword.get(opts, :model, "gpt-3.5-turbo")
-    prompt = Keyword.fetch!(opts, :prompt)
-    temperature = Keyword.get(opts, :temperature, 0.7)
-    max_tokens = Keyword.get(opts, :max_tokens, 42)
-    stream = Keyword.get(opts, :stream, true)
-
+  def chat_completion(text) do
     params = %{
-      "model" => model,
+      "model" => Uryi.gpt_model(),
       "messages" => [
         %{
           "role" => "system",
-          "content" => prompt <> " " <> text
+          "content" => Uryi.gpt_prompt() <> " " <> text
         }
       ],
-      "temperature" => temperature,
-      "max_tokens" => max_tokens,
-      "stream" => stream
+      "temperature" => 0.7,
+      "max_tokens" => 100
     }
 
-    build("/v1/chat/completions", api_key, params)
+    req = build("/v1/chat/completions", params)
+    opts = [receive_timeout: :timer.minutes(2)]
+
+    with {:ok, %Finch.Response{status: 200, body: body}} <- Finch.request(req, Uryi.finch(), opts) do
+      %{"choices" => [%{"message" => %{"content" => content}}]} = Jason.decode!(body)
+      {:ok, content}
+    end
   end
 
-  def request(req, opts \\ []) do
-    Finch.request(req, Uryi.finch(), opts)
-  end
+  def stream_chat_completion(text, f) when is_function(f, 2) do
+    params = %{
+      "model" => Uryi.gpt_model(),
+      "messages" => [
+        %{
+          "role" => "system",
+          "content" => Uryi.gpt_prompt() <> " " <> text
+        }
+      ],
+      "temperature" => 0.7,
+      "max_tokens" => 100,
+      "stream" => true
+    }
 
-  def stream(req, f) do
+    req = build("/v1/chat/completions", params)
+
     stream = fn
-      {:status, 200}, _ ->
-        :cont
+      {:status, status}, nil ->
+        {status, [], [], {"", nil}}
 
-      {:status, _status} = status, _ ->
-        {:error, status}
+      {:headers, headers}, acc ->
+        put_elem(acc, 1, elem(acc, 1) ++ headers)
 
-      {:headers, _headers}, :cont = cont ->
-        cont
+      {:data, data}, {200, _headers, _body, {text, f_acc} = stream_acc} = acc ->
+        stream_acc =
+          data
+          |> String.split("\n\n")
+          |> Enum.reduce(stream_acc, fn data, stream_acc ->
+            case data do
+              "data: [DONE]" <> _ ->
+                stream_acc
 
-      {:data, data}, :cont = cont ->
-        f.(data)
-        cont
+              "data: " <> json ->
+                json = Jason.decode!(json)
+                tokens = get_in(json, ["choices", Access.all(), "delta", "content"])
+                tokens = tokens |> Enum.reject(&is_nil/1) |> IO.iodata_to_binary()
+                text = text <> tokens
+                f_acc = if text == "", do: f_acc, else: f.(text, f_acc)
+                {text, f_acc}
 
-      _, error ->
-        error
+              "" ->
+                stream_acc
+            end
+          end)
+
+        put_elem(acc, 3, stream_acc)
+
+      {:data, body}, acc ->
+        put_elem(acc, 2, [elem(acc, 2) | body])
     end
 
-    result = Finch.stream(req, Uryi.finch(), _acc = nil, stream, receive_timeout: :infinity)
+    opts = [receive_timeout: :timer.minutes(2)]
+    result = Finch.stream(req, Uryi.finch(), _acc = nil, stream, opts)
 
-    case result do
-      {:ok, _} -> :ok
-      {:error, _reason} = error -> error
+    with {:ok, {status, headers, body, _stream_acc}} <- result do
+      {:ok, %Finch.Response{status: status, headers: headers, body: IO.iodata_to_binary(body)}}
     end
   end
 end

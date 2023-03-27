@@ -30,18 +30,6 @@ static ERL_NIF_TERM make_binary(ErlNifEnv* env, const void* bytes,
   return term;
 }
 
-static const char* get_iodata(ErlNifEnv* env, ERL_NIF_TERM term) {
-  ErlNifBinary bin;
-  ERL_NIF_TERM eos = enif_make_int(env, 0);
-  ERL_NIF_TERM list = enif_make_list2(env, term, eos);
-
-  if (!enif_inspect_iolist_as_binary(env, list, &bin)) {
-    return enif_make_badarg(env);
-  }
-
-  return bin.data;
-}
-
 ERL_NIF_TERM create_client_id(ErlNifEnv* env, int argc,
                               const ERL_NIF_TERM argv[]) {
   int client_id = td_create_client_id();
@@ -52,15 +40,28 @@ ERL_NIF_TERM send(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
   int client_id;
   if (!enif_get_int(env, argv[0], &client_id)) return enif_make_badarg(env);
 
-  const char* request = get_iodata(env, argv[1]);
-  td_send(client_id, request);
+  ErlNifBinary bin;
+  ERL_NIF_TERM eos = enif_make_int(env, 0);
+  ERL_NIF_TERM list = enif_make_list2(env, argv[1], eos);
 
+  if (!enif_inspect_iolist_as_binary(env, list, &bin)) {
+    return enif_make_badarg(env);
+  }
+
+  td_send(client_id, (char*)bin.data);
   return make_atom(env, "ok");
 }
 
 ERL_NIF_TERM execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-  const char* request = get_iodata(env, argv[0]);
-  const char* response = td_execute(request);
+  ErlNifBinary bin;
+  ERL_NIF_TERM eos = enif_make_int(env, 0);
+  ERL_NIF_TERM list = enif_make_list2(env, argv[0], eos);
+
+  if (!enif_inspect_iolist_as_binary(env, list, &bin)) {
+    return enif_make_badarg(env);
+  }
+
+  const char* response = td_execute((char*)bin.data);
   return make_binary(env, response, strlen(response));
 }
 

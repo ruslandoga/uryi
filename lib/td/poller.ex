@@ -1,33 +1,30 @@
 defmodule TD.Poller do
-  @moduledoc false
+  @moduledoc "Polls for new events from TDLib"
   alias TD.Nif
+  require Logger
+
+  @callback handle_event(map) :: any
 
   def child_spec(opts) do
     %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}}
   end
 
-  def start_link(_opts) do
-    client_id = Nif.create_client_id()
-
-    :ok =
-      TD.send(client_id, %{
-        "@type" => "getOption",
-        "name" => "version",
-        "@extra" => "VERSION"
-      })
-
-    {:ok, :proc_lib.spawn_link(__MODULE__, :loop, [])}
+  def start_link(opts) do
+    handler = Keyword.fetch!(opts, :handler)
+    {:ok, :proc_lib.spawn_link(__MODULE__, :recv, [handler])}
   end
 
   @doc false
-  def loop do
+  def recv(handler) do
     case Nif.recv(1.0) do
-      message when is_binary(message) ->
-        Uryi.PubSub.broadcast(Uryi.td_topic(), {__MODULE__, Jason.decode!(message)})
-        __MODULE__.loop()
+      event when is_binary(event) ->
+        event = Jason.decode!(event)
+        handler.handle_event(event)
 
       nil ->
-        __MODULE__.loop()
+        :ok
     end
+
+    __MODULE__.recv(handler)
   end
 end

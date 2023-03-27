@@ -2,7 +2,8 @@
 # TDLIB #
 #########
 
-FROM ghcr.io/ruslandoga/tdlib:alpine-3.17.2 AS tdlib
+# TODO ghcr.io/ruslandoga/tdlib:1.18.0-alpine-3.17.2
+FROM ghcr.io/ruslandoga/tdlib-alpine:master AS tdlib
 
 #########
 # BUILD #
@@ -21,10 +22,11 @@ RUN mix local.hex --force && mix local.rebar --force
 ENV MIX_ENV=prod
 
 COPY mix.exs mix.lock ./
-COPY config/config.exs config/prod.exs config/
 RUN mix deps.get
 RUN mix deps.compile
 
+COPY c_src c_src
+COPY Makefile Makefile
 COPY lib lib
 RUN mix compile
 COPY config/runtime.exs config/
