@@ -13,16 +13,6 @@ td_use_test_dc = !!System.get_env("TD_USE_TEST_DC") || config_env() == :test
 default_td_database_directory = Path.join(System.tmp_dir(), "uryi_#{config_env()}")
 td_database_directory = System.get_env("TD_DATABASE_DIRECTORY") || default_td_database_directory
 
-# telegram bot
-tg_bot_token = System.fetch_env!("TG_BOT_TOKEN")
-
-tg_bot_env =
-  cond do
-    String.downcase(System.get_env("TG_BOT_ENV") || "") == "test" -> :test
-    config_env() == :test -> :test
-    true -> :prod
-  end
-
 # openapi
 openai_api_key = System.fetch_env!("OPENAI_API_KEY")
 
@@ -32,8 +22,6 @@ default_gpt_prompt = "You are an AI secretary named Uryi. Answer the following m
 gpt_prompt = System.get_env("GPT_PROMPT", default_gpt_prompt)
 
 # uryi
-owner_id = String.to_integer(System.fetch_env!("OWNER_ID"))
-
 enabled_in =
   System.fetch_env!("ENABLED_IN")
   |> String.split(",", trim: true)
@@ -45,16 +33,11 @@ enabled_in =
   end)
 
 config :uryi,
-  td_enabled: config_env() != :test,
   td_api_id: td_api_id,
   td_api_hash: td_api_hash,
   td_use_test_dc: td_use_test_dc,
   td_database_directory: td_database_directory,
-  tg_bot_enabled: config_env() != :test,
-  tg_bot_token: tg_bot_token,
-  tg_bot_env: tg_bot_env,
   openai_api_key: openai_api_key,
   gpt_model: gpt_model,
   gpt_prompt: gpt_prompt,
-  owner_id: owner_id,
   enabled_in: enabled_in

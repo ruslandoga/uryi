@@ -7,4 +7,4 @@ kill_timeout = 5
   image = "ghcr.io/ruslandoga/uryi:master"
 
 # https://fly.io/docs/reference/secrets/
-# TD_API_ID, TD_API_HASH, TG_BOT_TOKEN, OWNER_ID, ENABLED_IN, OPENAI_API_KEY
+# TD_API_ID, TD_API_HASH, ENABLED_IN, OPENAI_API_KEY
