@@ -1,22 +1,23 @@
 defmodule TD.Session do
-  @moduledoc false
+  @moduledoc "Handles events polled from TDLib"
   use GenServer
   alias TD.Nif
   @behaviour TD.Poller
 
   @callback td_new_message(map) :: any
-  @callback td_auth(map) :: any
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def client_id do
-    GenServer.call(__MODULE__, :client_id)
-  end
+  for field <- [:client_id, :handler, :auth] do
+    def unquote(field)() do
+      GenServer.call(__MODULE__, unquote(field))
+    end
 
-  def handler do
-    GenServer.call(__MODULE__, :handler)
+    def handle_call(unquote(field), _from, state) do
+      {:reply, Map.fetch!(state, unquote(field)), state}
+    end
   end
 
   def await(extra, timeout \\ :timer.seconds(5)) do
@@ -40,17 +41,12 @@ defmodule TD.Session do
         %{"@client_id" => client_id} = event
         TD.set_tdlib_parameters(client_id)
 
-      type
-      when type in [
-             "authorizationStateWaitPhoneNumber",
-             "authorizationStateWaitCode",
-             "authorizationStateWaitPassword"
-           ] ->
-        # TODO crash here -> new client id -> db lock error
-        handler().td_auth(event)
+      "authorizationStateClosed" ->
+        GenServer.stop(__MODULE__, :normal)
 
-      "authorizationStateReady" ->
-        :ok
+      # TODO when ready, list chats
+      _other ->
+        GenServer.cast(__MODULE__, {:auth, event})
     end
   end
 
@@ -61,19 +57,11 @@ defmodule TD.Session do
     handler = Keyword.fetch!(opts, :handler)
     client_id = Nif.create_client_id()
     :ok = TD.send(client_id, %{"@type" => "getOption", "name" => "version"})
-    state = %{handler: handler, client_id: client_id, await: %{}}
+    state = %{handler: handler, client_id: client_id, await: %{}, auth: nil}
     {:ok, state}
   end
 
   @impl true
-  def handle_call(:client_id, _from, state) do
-    {:reply, state.client_id, state}
-  end
-
-  def handle_call(:handler, _from, state) do
-    {:reply, state.handler, state}
-  end
-
   def handle_call({:await, extra}, from, state) do
     state = Map.update!(state, :await, fn await -> Map.put(await, extra, from) end)
     {:noreply, state}
@@ -85,5 +73,9 @@ defmodule TD.Session do
     {from, await} = Map.pop(await, extra)
     if from, do: GenServer.reply(from, event)
     {:noreply, %{state | await: await}}
+  end
+
+  def handle_cast({:auth, event}, state) do
+    {:noreply, %{state | auth: event}}
   end
 end

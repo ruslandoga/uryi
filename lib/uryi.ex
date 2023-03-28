@@ -5,13 +5,10 @@ defmodule Uryi do
 
   @doc false
   def finch, do: __MODULE__.Finch
-  def bot_topic, do: "bot"
-  def td_topic, do: "td"
   def fetch_env!(key), do: Application.fetch_env!(@app, key)
   def put_env(key, value), do: Application.put_env(@app, key, value)
 
   env_keys = [
-    :owner_id,
     :enabled_in,
     :td_database_directory,
     :td_api_id,
@@ -28,50 +25,12 @@ defmodule Uryi do
     def unquote(key)(), do: Application.fetch_env!(@app, unquote(key))
   end
 
-  @impl true
-  def td_auth(
-        %{"authorization_state" => %{"@type" => "authorizationStateWaitPhoneNumber"}} = event
-      ) do
-    {:ok, phone} = bot_prompt("Please enter your phone number")
+  def auth_state, do: TD.Session.auth()
+  def auth_phone(phone), do: TD.set_authentication_phone_number(phone)
+  def auth_code(code), do: TD.check_authentication_code(code)
+  def auth_password(password), do: TD.check_authentication_password(password)
 
-    case TD.set_authentication_phone_number(phone) do
-      %{"@type" => "ok"} -> :ok
-      %{"@type" => "error"} -> td_auth(event)
-    end
-  end
-
-  def td_auth(
-        %{
-          "@type" => "updateAuthorizationState",
-          "authorization_state" => %{"@type" => "authorizationStateWaitCode"}
-        } = event
-      ) do
-    {:ok, code} = bot_prompt("Please enter the authentication code you received")
-
-    case TD.check_authentication_code(code) do
-      %{"@type" => "ok"} -> :ok
-      %{"@type" => "error"} -> td_auth(event)
-    end
-  end
-
-  def td_auth(
-        %{
-          "@type" => "updateAuthorizationState",
-          "authorization_state" => %{"@type" => "authorizationStateWaitPassword"}
-        } = event
-      ) do
-    {:ok, password} = bot_prompt("Please enter your password")
-
-    case TD.check_authentication_password(password) do
-      %{"@type" => "ok"} -> :ok
-      %{"@type" => "error"} -> td_auth(event)
-    end
-  end
-
-  defp bot_prompt(text) do
-    Bot.send_prompt(Uryi.owner_id(), text)
-  end
-
+  # TODO move to TD.Session
   @impl true
   def td_new_message(%{
         "message" => %{

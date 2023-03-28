@@ -14,7 +14,6 @@ defmodule Uryi.Application do
 
     children = [
       {Finch, name: Uryi.finch(), pools: %{default: [protocol: :http2]}},
-      Bot,
       {TD, handler: Uryi}
     ]
 
