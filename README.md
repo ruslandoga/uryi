@@ -1,15 +1,21 @@
 Uryi Gepetovich Telegramov, a self-hosted ChatGPT + Telegram secretary.
 
-Deploying to `fly.io`
+Uryi lives on [fly.io:](https://fly.io)
 
-- register on [fly.io](https://fly.io) and install `flyctl`
-- create an app with `fly apps create <some-name>`
-- copy [fly.toml](fly.toml)
-- create secrets mentioned in [fly.toml](fly.toml) `fly secrets set TD_API_ID=... TD_API_HASH=... etc.`
-- `fly deploy`
-- `fly console`
-- `bin/uryi remote`
-- authenticate
+- my current config's in [fly.toml](fly.toml)
+- my secrets are (can be set with `fly secrets set TD_API_ID=... TD_API_HASH=... etc.`)
+
+```console
+$ fly secrets list
+NAME          	DIGEST          	CREATED AT
+ENABLED_IN    	90b0ef824c649d6e	2023-03-28T07:58:12Z
+OPENAI_API_KEY	7e1ad3e2cfa4b3d2	2023-03-28T07:58:12Z
+OWNER_ID      	bdbe6bcb61d15cac	2023-03-28T07:58:12Z
+TD_API_HASH   	93724d3d63a77cf8	2023-03-28T07:58:12Z
+TD_API_ID     	c2d571b41520575a	2023-03-28T07:58:12Z
+```
+
+- the way I authenticate is `fly console` + `bin/uryi remote` and
 
 ```elixir
 iex> Uryi.auth_state()
