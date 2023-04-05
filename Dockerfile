@@ -38,7 +38,7 @@ RUN mix release
 #######
 
 FROM alpine:3.17.2 AS app
-RUN apk add --no-cache --update openssl zlib libgcc libstdc++
+RUN apk add --no-cache --update openssl zlib libgcc libstdc++ ncurses
 
 WORKDIR /app
 
