@@ -1,10 +1,11 @@
 defmodule TD.Nif do
   @moduledoc false
-  @on_load :init
+  @on_load :load_nif
+  @compile {:autoload, false}
 
-  def init do
-    path = Application.app_dir(:uryi, "priv/td_nif")
-    :erlang.load_nif(to_charlist(path), 0)
+  def load_nif do
+    path = :filename.join(:code.priv_dir(:uryi), 'td_nif')
+    :erlang.load_nif(path, 0)
   end
 
   @spec create_client_id :: integer
