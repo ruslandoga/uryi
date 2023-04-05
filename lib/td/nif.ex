@@ -3,7 +3,8 @@ defmodule TD.Nif do
   @on_load :init
 
   def init do
-    :erlang.load_nif('./priv/td_nif', 0)
+    path = Application.app_dir(:uryi, "priv/td_nif")
+    :erlang.load_nif(to_charlist(path), 0)
   end
 
   @spec create_client_id :: integer
