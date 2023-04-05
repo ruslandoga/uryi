@@ -46,7 +46,7 @@ RUN chown nobody:nobody /app
 USER nobody:nobody
 
 COPY --from=build --chown=nobody:nobody /app/_build/prod/rel/uryi ./
-COPY --from=tdlib /usr/local/lib/libtdjson.so /usr/local/lib/libtdjson.so
+COPY --from=tdlib /usr/local/lib/libtdjson.so.1.8.12 /usr/local/lib/libtdjson.so.1.8.12
 
 ENV HOME=/app
 
