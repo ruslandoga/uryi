@@ -2,6 +2,12 @@ SRC = c_src/td_nif.c
 CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
 LDFLAGS += -ltdjson
 
+ifneq ($(DEBUG),)
+	CFLAGS += -g
+else
+	CFLAGS += -DNDEBUG=1 -O2
+endif
+
 KERNEL_NAME := $(shell uname)
 
 PREFIX = $(MIX_APP_PATH)/priv
@@ -26,7 +32,15 @@ endif
 
 ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
 
+ifneq ($(STATIC_ERLANG_NIF),)
+	CFLAGS += -DSTATIC_ERLANG_NIF=1
+endif
+
+ifeq ($(STATIC_ERLANG_NIF),)
+all: $(PREFIX) $(BUILD) $(LIB_NAME)
+else
 all: $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
+endif
 
 $(BUILD)/%.o: c_src/%.c
 	@echo " CC $(notdir $@)"
