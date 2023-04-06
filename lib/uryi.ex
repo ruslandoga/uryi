@@ -23,6 +23,41 @@ defmodule Uryi do
     def unquote(key)(), do: Application.fetch_env!(@app, unquote(key))
   end
 
+  def login do
+    %{"authorization_state" => %{"@type" => type}} = auth_state()
+
+    result =
+      case type do
+        "authorizationStateWaitPhoneNumber" ->
+          {:cont, auth_phone(prompt("Please enter your phone number: "))}
+
+        "authorizationStateWaitCode" ->
+          {:cont, auth_code(prompt("Please enter the authentication code you received: "))}
+
+        "authorizationStateWaitPassword" ->
+          {:cont, auth_password(prompt("Please enter your password: "))}
+
+        "authorizationStateReady" ->
+          IO.puts("#{IO.ANSI.green()}You are logged in :)#{IO.ANSI.reset()}")
+      end
+
+    with {:cont, result} <- result do
+      case result do
+        %{"@type" => "ok"} ->
+          :timer.sleep(100)
+
+        %{"@type" => "error", "message" => message} ->
+          IO.puts("#{IO.ANSI.red()}#{message}#{IO.ANSI.reset()}")
+      end
+
+      login()
+    end
+  end
+
+  defp prompt(prompt) do
+    prompt |> IO.gets() |> String.trim()
+  end
+
   def auth_state, do: TD.Session.auth()
   def auth_phone(phone), do: TD.set_authentication_phone_number(phone)
   def auth_code(code), do: TD.check_authentication_code(code)
