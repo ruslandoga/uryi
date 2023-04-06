@@ -14,7 +14,7 @@ TD_API_HASH   	93724d3d63a77cf8	2023-03-28T07:58:12Z
 TD_API_ID     	c2d571b41520575a	2023-03-28T07:58:12Z
 ```
 
-- the way I authenticate is `fly console` + `/app/bin/uryi remote` and
+- the way I authenticate is `fly ssh console` + `/app/bin/uryi remote` and
 
 ```elixir
 iex> Uryi.auth_state()
