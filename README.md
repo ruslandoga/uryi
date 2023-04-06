@@ -1,6 +1,6 @@
 Uryi Gepetovich Telegramov gives your Telegram account a multiple personality GPT disorder.
 
-- my Uryi lives on [fly.io:](https://fly.io), config's in [fly.toml](fly.toml)
+- my Uryi lives on [fly.io;](https://fly.io) config's in [fly.toml](fly.toml)
 - my Uryi secrets are
 
 ```console
