@@ -1,7 +1,6 @@
 Uryi Gepetovich Telegramov gives your Telegram account a multiple personality GPT disorder.
 
 - my Uryi lives on [fly.io;](https://fly.io) config's in [fly.toml](fly.toml)
-- my Uryi secrets are
 
 ```console
 $ fly secrets list
@@ -14,7 +13,9 @@ TD_API_ID     	c2d571b41520575a	2023-03-28T07:58:12Z
 
 - my Uryi authenticates with `fly ssh console` and `/app/bin/uryi rpc Uryi.login`
 
-```
+```console
+$ fly ssh console
+# /app/bin/uryi rpc Uryi.login
 Please enter your phone number: +0123456789
 Please enter the authentication code you received: 12345
 Please enter your password: 1234
