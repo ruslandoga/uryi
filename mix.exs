@@ -26,7 +26,7 @@ defmodule Uryi.MixProject do
     [
       {:finch, "~> 0.18.0"},
       {:jason, "~> 1.4"},
-      {:elixir_make, "~> 0.7.6", runtime: false},
+      {:elixir_make, "~> 0.8.4", runtime: false},
       {:rexbug, "~> 1.0"}
     ]
   end
