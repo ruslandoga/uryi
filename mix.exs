@@ -24,7 +24,7 @@ defmodule Uryi.MixProject do
 
   defp deps do
     [
-      {:finch, "~> 0.16.0"},
+      {:finch, "~> 0.18.0"},
       {:jason, "~> 1.4"},
       {:elixir_make, "~> 0.7.6", runtime: false},
       {:rexbug, "~> 1.0"}
