@@ -9,7 +9,7 @@ FROM ghcr.io/ruslandoga/tdlib-alpine:master AS tdlib
 # BUILD #
 #########
 
-FROM hexpm/elixir:1.14.5-erlang-25.3-alpine-3.17.2 as build
+FROM hexpm/elixir:1.17.1-erlang-27.0-alpine-3.20.1 as build
 
 RUN apk add --no-cache --update git build-base
 COPY --from=tdlib /usr/local/lib /usr/local/lib
